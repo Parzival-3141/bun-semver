@@ -1,0 +1,50 @@
+# BNF:
+
+range-set  ::= range ( logical-or range ) *
+logical-or ::= ( ' ' ) * '||' ( ' ' ) *
+range      ::= hyphen | simple ( ' ' simple ) * | ''
+hyphen     ::= partial ' - ' partial
+simple     ::= primitive | partial | tilde | caret
+primitive  ::= ( '<' | '>' | '>=' | '<=' | '=' ) partial
+partial    ::= xr ( '.' xr ( '.' xr qualifier ? )? )?
+xr         ::= 'x' | 'X' | '*' | nr
+nr         ::= '0' | ['1'-'9'] ( ['0'-'9'] ) *
+tilde      ::= '~' partial
+caret      ::= '^' partial
+qualifier  ::= ( '-' pre )? ( '+' build )?
+pre        ::= parts
+build      ::= parts
+parts      ::= part ( '.' part ) *
+part       ::= nr | [-0-9A-Za-z]+
+
+
+# PEG:
+# Note that SemVer will match both partial AND full semantic versions. 
+# This may be a shortcoming of the PEG.
+
+Root <- Range
+
+Range <- ComparatorSet (OR ComparatorSet)*
+OR <- (' ')* '||' (' ')*
+
+ComparatorSet <- (SemVer ' - ' SemVer) / Comparator (' ' Comparator)* 
+Comparator <- (Operator / `~` / '^')? SemVer
+Operator <- '>=' / '>' / '<=' / '<' / '='
+
+SemVer <- VerNum ( '.' VerNum ( '.' VerNum PreRelease? )? )?
+
+VerNum <- 'x' / 'X' / '*' / Num
+Num <- '0' / [1-9] [0-9]*
+
+PreRelease <- '-' PreParts ('+' PreParts)? / ('+' PreParts) 
+PreParts <- PrePart ('.' PrePart)*
+PrePart = ([-A-Za-z]+ / ('0' [0-9]* [-A-Za-z]) / ([1-9] [0-9]*)) [-0-9A-Z-a-z]*
+
+
+# These work
+# 1.2.7 || >=1.2.9 <2.0.0
+# 1.2.3-alpha.3
+# 1.0.0-beta.1.4
+
+# These dont
+# pre-3
